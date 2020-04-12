@@ -1,0 +1,27 @@
+version: '3.3'
+
+services:
+  rabbit:
+    hostname: rabbit
+    image: rabbitmq:management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  db:
+    image: postgres:11
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+
+  worker:
+    build: .
+    image: testing
+    restart: always
+    command: celery worker -A tasks -l INFO
+    depends_on:
+      - rabbit
+    environment:
+      - RABBIT=rabbit
+      - PGHOST=db
