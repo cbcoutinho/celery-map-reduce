@@ -1,12 +1,16 @@
 # Notes on celery
 
-These should now work ipython, after activating rabbitmq broker and pg backend
+
+These should now work IPython, after activating RabbitMQ broker and PostgreSQL
+backend
 
 
-	inner_chord1 = chord([mul.s(2, 3), mul.s(3, 4)], tsum.s())
+	inner_chord1 = chord([multiply.s(2, 3), multiply.s(3, 4)], reducer.s())
 
-	inner_chord2 = chord([mul.s(4, 5), mul.s(5, 6)], tsum.s())
+	inner_chord2 = chord([multiply.s(4, 5), multiply.s(5, 6)], reducer.s())
 
-	outer_chord = group(inner_chord1, inner_chord2) | tsum.s()
+	outer_chord = group(inner_chord1, inner_chord2) | reducer.s()
 
 	outer_chord()
+	
+[sample.png](https://i.stack.imgur.com/PsWEF.png)
