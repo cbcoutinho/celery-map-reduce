@@ -1,15 +1,20 @@
 import os
 import time
 import celery
-from celery import group, chord, signals
+from celery import group, chord
 from celery.utils.log import get_task_logger
 
 
 app = celery.Celery(
     __name__,
-    broker="amqp://guest@{host}".format(host=os.getenv("RABBIT", "localhost")),
-    backend="db+postgresql+psycopg2://postgres:postgres@{host}/postgres".format(
-        host=os.getenv("PGHOST", "localhost")
+    broker="amqp://{user}:{password}@{host}".format(
+        user="guest", password="guest", host=os.getenv("RABBIT", "localhost"), vhost=""
+    ),
+    backend="db+postgresql+psycopg2://{user}:{password}@{host}/{database}".format(
+        user="postgres",
+        password="postgres",
+        host=os.getenv("PGHOST", "localhost"),
+        database="postgres",
     ),
 )
 
@@ -17,49 +22,32 @@ logger = get_task_logger(__name__)
 
 
 @app.task()
-def add(x, y):
-    logger.info("Entering add")
-    time.sleep(0.1)
-    return x + y
-
-
-@app.task()
-def mul(x, y):
-    logger.info("Entering mul")
-    time.sleep(0.1)
-    return x * y
-
-
-@app.task()
-def tsum(numbers):
-    logger.info("Entering tsum")
-    time.sleep(0.1)
-    return sum(x for x in numbers)
-
-
-@app.task()
 def gen(n):
-    logger.info("Entering gen")
-    return range(n)
+    """ Expensive generator function """
+    time.sleep(10)
+    return list(range(n))
 
 
 @app.task()
-def process(n, ns=None):
-    logger.info("Entering process")
-    return n * 2
+def multiply(x):
+    """ Function used by the mapper """
+    return x * x
 
 
-# gen -> chord(group(f(g) for g in gen), aggregate)
+@app.task()
+def reducer(numbers):
+    """ Simple reduce function """
+    time.sleep(10)
+    return sum(numbers)
 
 
-# @signals.task_success.connect()
-@signals.task_postrun.connect()
-def process_range(**kwargs):
-    logger.info("Entering process_range")
+@app.task()
+def map_reduce(n):
+    """ Takes input that dynamically produces a generator that in turn, produce
+    input to a map-reduce job """
 
-    # for k, v in kwargs.items():
-    # logger.info(f"-- {k}: {v}")
+    numbers = gen.s(n)
+    my_chord = chord(group(multiply.s(n) for n in numbers()), reducer.s())
+    result = my_chord()
 
-    # header = group(add.s(n, n) for n in gen.s(kwargs["ns"]))
-    # callback = tsum.s()
-    # chord(header)(callback)
+    return result

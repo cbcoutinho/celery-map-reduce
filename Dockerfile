@@ -2,6 +2,7 @@ FROM python:3.7-slim
 
 WORKDIR /app
 
+RUN pip install -U pip
 RUN pip install poetry
 RUN python -m venv /venv
 
